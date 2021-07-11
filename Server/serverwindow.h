@@ -17,10 +17,15 @@ public:
     ~ServerWindow();
 
 private slots:
-    void on_button_startServer_clicked();
-    void on_button_stopServer_clicked();
-    void on_button_send_clicked();
+    void on_button_startServer_clicked();  //действие при нажати на кнопку запуска сервера
+    void on_button_stopServer_clicked(); //действие при нажати на кнопку стоп сервера
+    void on_button_send_clicked(); //действия при нажатии на отправку сообщения
     void updateTextBrowser_log(QString message); //слот для обновления информации о логе сервера
+    void updateTextBrowser_messages(QStringList messages); // слот для обновления информации о сообщениях
+    void updateListActiveNEWClients(QString arg_Client); //слот для обновления информации о новых активных подключениях
+    void updateListActiveDISCONNECTClients(QString arg_Client);//слот для обновления информации о отключившихся подключениях
+    void changeTitleGroupBox(); //слот для изменения имени групбокса
+    void changeCurrentClient(); // вызывается при выборе нового клиента из списка подключений с которым вести общение
 
 private:
     Ui::ServerWindow *ui;
