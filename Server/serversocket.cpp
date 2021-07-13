@@ -33,12 +33,12 @@ void ServerSocket::onNewConnection()
         {
             ActiveClient* activeClient = new ActiveClient(m_socket->socketDescriptor(), m_socket);
             activeClient->setDialogSocket(nullptr);
-            SClients.append(activeClient);
+            ListOfClients.append(activeClient);
 
-            connect(SClients.last()->getSocket(), &QTcpSocket::readyRead, this, &ServerSocket::slotServerRead);
-            connect(SClients.last()->getSocket(), &QTcpSocket::disconnected, this, &ServerSocket::slotClientDisconnected);
+            connect(ListOfClients.last()->getSocket(), &QTcpSocket::readyRead, this, &ServerSocket::slotServerRead);
+            connect(ListOfClients.last()->getSocket(), &QTcpSocket::disconnected, this, &ServerSocket::slotClientDisconnected);
 
-            SClients.last()->addToHistoryOfMessages("<nobr><font color=\"green\">Сonnected to server<br></nobr>");
+            ListOfClients.last()->addToHistoryOfMessages("<nobr><font color=\"green\">Сonnected to server<br></nobr>");
             slotUpdateStatus_log("<nobr><font color=\"green\">New client connected</nobr>");
         }
         else
@@ -53,44 +53,44 @@ void ServerSocket::slotServerRead()
     QString     data;
     QTcpSocket* clientSocket = (QTcpSocket*)sender(); // Получаем объект сокета, который вызвал данный слот
     int index_of_client;
-    for(index_of_client = 0; index_of_client < SClients.length(); index_of_client++)
+    for(index_of_client = 0; index_of_client < ListOfClients.length(); index_of_client++)
     {
-        if (SClients[index_of_client]->getSocket() == clientSocket)
+        if (ListOfClients[index_of_client]->getSocket() == clientSocket)
             break;
     }
 
-    while (SClients[index_of_client]->getSocket()->bytesAvailable() > 0)
+    while (ListOfClients[index_of_client]->getSocket()->bytesAvailable() > 0)
     {
-        data = SClients[index_of_client]->getSocket()->readAll();
+        data = ListOfClients[index_of_client]->getSocket()->readAll();
         if (data[0] == "0") //"0" - отправляет клиент в начале строки при отправке имени
         {
             data.remove(0,1);
             slotUpdateStatus_log("<nobr><font color=\"green\">Got hostname: </nobr>" + data);
-            SClients[index_of_client]->setName(data);
+            ListOfClients[index_of_client]->setName(data);
             slotSendNEWClientToMainWindow(data);
         }
         else if (data[0] == "1") //"1" - отправляет клиент при отправке любого сообщения в  чате
         {
            data.remove(0,1);
 
-           if (SClients[index_of_client]->getDialogSocket() == nullptr)
+           if (ListOfClients[index_of_client]->getDialogSocket() == nullptr)
            {
-               SClients[index_of_client]->addToHistoryOfMessages(SClients[index_of_client]->getName() + " to Server: " + data);
+               ListOfClients[index_of_client]->addToHistoryOfMessages(ListOfClients[index_of_client]->getName() + " to Server: " + data);
 
-               if (currentClient == SClients[index_of_client]->getSocket())
-                   slotUpdateStatus_messages(SClients[index_of_client]->getHistoryOfMessages());
+               if (currentClient == ListOfClients[index_of_client]->getSocket())
+                   slotUpdateStatus_messages(ListOfClients[index_of_client]->getHistoryOfMessages());
            }
            else
            {
                int dialogWith;
-               for(dialogWith = 0; dialogWith < SClients.length(); dialogWith++)
+               for(dialogWith = 0; dialogWith < ListOfClients.length(); dialogWith++)
                {
-                   if (SClients[dialogWith]->getSocket() == SClients[index_of_client]->getDialogSocket())
+                   if (ListOfClients[dialogWith]->getSocket() == ListOfClients[index_of_client]->getDialogSocket())
                        break;
                }
 
-               SClients[index_of_client]->addToHistoryOfMessages(SClients[index_of_client]->getName() + " to " + SClients[dialogWith]->getName() + ": " + data);
-               SClients[index_of_client]->getDialogSocket()->write("1" + data.toUtf8());
+               ListOfClients[index_of_client]->addToHistoryOfMessages(ListOfClients[index_of_client]->getName() + " to " + ListOfClients[dialogWith]->getName() + ": " + data);
+               ListOfClients[index_of_client]->getDialogSocket()->write("1" + data.toUtf8());
            }
         }
         else if (data[0] == "2") //"2" - отправляет клиент при отправке имени другого клиента с которым хочет начать общение
@@ -98,51 +98,12 @@ void ServerSocket::slotServerRead()
             data.remove(0,1);
 
             int dialogWith;
-            for(dialogWith = 0; dialogWith < SClients.length(); dialogWith++)
+            for(dialogWith = 0; dialogWith < ListOfClients.length(); dialogWith++)
             {
-                if (SClients[dialogWith]->getName() == data)
+                if (ListOfClients[dialogWith]->getName() == data)
                     break;
             }
-            SClients[index_of_client]->setDialogSocket(SClients[dialogWith]->getSocket());
-        }
-        else if (data[0] == "3") //отправляет главный клиент, который генерирует данные, при это у всех остальных клиентов должна заблокироваться кнопка генерировании даты и чекбокс
-        {
-            data.remove(0,1);
-
-            for(int i = 0; i < SClients.length(); i++)
-            {
-                if (SClients[i]->getSocket() == clientSocket)
-                    slotUpdateStatus_log(SClients[i]->getName() + " became a master client");
-                else
-                    SClients[i]->getSocket()->write("2block");
-            }
-        }
-        else if (data[0] == "4") //отправляет клиент в начале строки при отправке QStringList. Сервер должен получить его и отправить каждому клиенту из вектора по строке
-        {
-            data.remove(0,1);
-
-            QStringList list = data.split(';');
-
-            for(int i = 0; i < SClients.length(); i++)
-            {
-                SClients[i]->getSocket()->write("3" + list[i].toUtf8());
-            }
-        }
-        else if (data[0] == "5") //отправляет клиент в начале строки при отправке обработанной строки для записи ее в бд
-        {
-            data.remove(0,1);
-
-            QFile fileDB;
-            fileDB.setFileName("Database.txt");
-            if (fileDB.open(QIODevice::Append | QIODevice::Text))
-            {
-                slotUpdateStatus_log("<nobr><font color=\"green\">" + SClients[index_of_client]->getName() + " opened a file (database)</nobr>");
-                fileDB.write(data.toUtf8() + "\n");
-            }
-            else
-                slotUpdateStatus_log("<nobr><font color=\"red\">" + SClients[index_of_client]->getName() + " could't open a file (database)</nobr>");
-
-            fileDB.close();
+            ListOfClients[index_of_client]->setDialogSocket(ListOfClients[dialogWith]->getSocket());
         }
     }
 }
@@ -150,16 +111,16 @@ void ServerSocket::slotClientDisconnected()
 {
     QTcpSocket* clientSocket = (QTcpSocket*)sender();
     int index_of_client;
-    for(index_of_client = 0; index_of_client < SClients.length(); index_of_client++)
+    for(index_of_client = 0; index_of_client < ListOfClients.length(); index_of_client++)
     {
-        if (SClients[index_of_client]->getSocket() == clientSocket)
+        if (ListOfClients[index_of_client]->getSocket() == clientSocket)
             break;
     }
 
-    slotUpdateStatus_log("<nobr><font color=\"red\">Client \"" + SClients[index_of_client]->getName() + "\" disconnected </nobr>");
-    SClients[index_of_client]->getSocket()->close();
-    slotSendDISCONNECTClientToMainWindow(SClients[index_of_client]->getName());
-    SClients.remove(index_of_client);
+    slotUpdateStatus_log("<nobr><font color=\"red\">Client \"" + ListOfClients[index_of_client]->getName() + "\" disconnected </nobr>");
+    ListOfClients[index_of_client]->getSocket()->close();
+    slotSendDISCONNECTClientToMainWindow(ListOfClients[index_of_client]->getName());
+    ListOfClients.remove(index_of_client);
 }
 
 void ServerSocket::slotUpdateStatus_messages(QStringList messages)
@@ -175,30 +136,30 @@ void ServerSocket::slotUpdateStatus_log(QString status)
 void ServerSocket::sendMessage(QString msg)
 {
     int index_of_client;
-    for(index_of_client = 0; index_of_client < SClients.length(); index_of_client++)
+    for(index_of_client = 0; index_of_client < ListOfClients.length(); index_of_client++)
     {
-        if (SClients[index_of_client]->getSocket() == currentClient)
+        if (ListOfClients[index_of_client]->getSocket() == currentClient)
             break;
     }
 
     currentClient->write("1" + msg.toUtf8());
-    SClients[index_of_client]->addToHistoryOfMessages("Server: " + msg);
+    ListOfClients[index_of_client]->addToHistoryOfMessages("Server: " + msg);
 
-    if (currentClient == SClients[index_of_client]->getSocket())
-        slotUpdateStatus_messages(SClients[index_of_client]->getHistoryOfMessages());
+    if (currentClient == ListOfClients[index_of_client]->getSocket())
+        slotUpdateStatus_messages(ListOfClients[index_of_client]->getHistoryOfMessages());
 }
 
 void ServerSocket::onStopingClicked()
 {
     if(m_serverStatus == Listening)
     {
-        for(int i = 0; i < SClients.length(); i++)
+        for(int i = 0; i < ListOfClients.length(); i++)
         {
-            QTextStream os(SClients[i]->getSocket());
+            QTextStream os(ListOfClients[i]->getSocket());
             os.setAutoDetectUnicode(true);
             os << "1<nobr><font color=\"red\">Server closed at " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << "</nobr>";
-            SClients[i]->getSocket()->close();
-            slotSendDISCONNECTClientToMainWindow(SClients[i]->getName());
+            ListOfClients[i]->getSocket()->close();
+            slotSendDISCONNECTClientToMainWindow(ListOfClients[i]->getName());
         }
         m_server->close();
         m_serverStatus = NotListening;
@@ -219,15 +180,15 @@ void ServerSocket::slotSendDISCONNECTClientToMainWindow(QString client)
 void ServerSocket::selectCurrentClient(QString arg_name)
 {
     int index_of_client;
-    for(index_of_client = 0; index_of_client < SClients.length(); index_of_client++)
+    for(index_of_client = 0; index_of_client < ListOfClients.length(); index_of_client++)
     {
-        if (SClients[index_of_client]->getName() == arg_name)
+        if (ListOfClients[index_of_client]->getName() == arg_name)
             break;
     }
 
-    slotUpdateStatus_messages(SClients[index_of_client]->getHistoryOfMessages());
+    slotUpdateStatus_messages(ListOfClients[index_of_client]->getHistoryOfMessages());
 
-    currentClient = SClients[index_of_client]->getSocket();
+    currentClient = ListOfClients[index_of_client]->getSocket();
 }
 
 void ServerSocket::sendClientfromMainWindow(QStringList test)
@@ -239,9 +200,9 @@ void ServerSocket::sendClientfromMainWindow(QStringList test)
         stringofClients += ";";
     }
 
-    for(int i = 0; i < SClients.length(); i++)
+    for(int i = 0; i < ListOfClients.length(); i++)
     {
-        QTextStream os(SClients[i]->getSocket());
+        QTextStream os(ListOfClients[i]->getSocket());
         os.setAutoDetectUnicode(true);
         os << "0" << stringofClients;
     }

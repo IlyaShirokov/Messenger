@@ -45,7 +45,7 @@ private:
         Listening = 1
     };
 
-    QVector<ActiveClient*> SClients;
+    QVector<ActiveClient*> ListOfClients;  //список активных клиентов
     QTcpSocket* currentClient; //клиент, которому сервер в текущий момент отправляет сообщения
 };
 
