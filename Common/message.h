@@ -8,15 +8,32 @@ class Message : public QObject
 {
     Q_OBJECT
 public:
-    Message();
-    Message(int type, QString data);
+    explicit Message(QObject *parent = nullptr);
+    Message(QString m_textData, qint8 typeMessage, QString senderName, QString destinationName);
 
-    friend QDataStream operator <<(QDataStream &out, const Message &msg);
-    friend QDataStream operator >>(QDataStream &in, Message &msg);
+    QString getTextData();
+    qint8 getTypeMessage();
+    QString getSenderName();
+    QString getDestinationName();
+
+    friend QDataStream& operator<<(QDataStream &out, const Message &msg); //оператор вывода
+    friend QDataStream& operator>>(QDataStream &in, Message &msg);       //оператор ввода
+
+    static const quint8 comAutchRequest = 0;            //отправляет клиент при отправке имени
+    static const quint8 comUsersOnline = 1;             //отправляет сервер при отправке списка пользователей, которые онлайн
+    static const quint8 comTextMessage = 2;             //отправляет клиент/сервер при отправке любого текстового сообщения
+    static const quint8 comStartDialogWithUser = 3;     //отправляет клиент вместе с именем пользователя, с которым хочет начать диалог
+    static const quint8 comServerClosed = 4;            //отправляет сервер всем клиентам при нажатии на кнопку стоп сервер
+
+signals:
 
 private:
-    int m_type;
-    QString m_data;
+    QString m_textData;         //текстовые данные сообщения
+    qint8 m_typeMessage;        //тип сообщения
+    QString m_senderName;       //имя отправителя
+    QString m_destinationName;  //имя получателя
+
+
 };
 
 #endif // MESSAGE_H

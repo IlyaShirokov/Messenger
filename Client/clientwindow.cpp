@@ -7,12 +7,14 @@ ClientWindow::ClientWindow(QWidget *parent)
 {
     ui->setupUi(this);
     ui->button_connectToServer->setEnabled(0);
+    ui->button_sendMessage->setEnabled(0);
     loadListOfClient = 0;
 
-    connect(&client, &ClientSocket::updateStatus, this, &ClientWindow::updateTextBrowser); //для записи в текстбраузер из другого класса
-    connect(ui->lineEdit_Name, &QLineEdit::textEdited, this, &ClientWindow::checkName); //для проверки на непустоe имя
-    connect(&client, &ClientSocket::updateClients, this, &ClientWindow::addItemsToList); //для заполнения листа активных клиентов
-    connect(ui->listWidget, &QListWidget::doubleClicked, this, &ClientWindow::changeTitleGroupBox);
+    connect(&client, &ClientSocket::updateMessages, this, &ClientWindow::updateTextBrowser_messages);               //для записи в текстбраузер из другого класса
+    connect(ui->lineEdit_Name, &QLineEdit::textEdited, this, &ClientWindow::checkName);                             //для проверки на непустоe имя
+    connect(&client, &ClientSocket::updateClients, this, &ClientWindow::changeUsersInList);                         //для заполнения листа активных клиентов
+    connect(ui->listWidget_activeClients, &QListWidget::doubleClicked, this, &ClientWindow::changeUserDialogWith);  //выбор клиента для диалога с ним
+    connect(&client, &ClientSocket::serverDisconnected, this, &ClientWindow::serverDisconnected);                   //действия при потере соеднинения с сервером
 }
 
 ClientWindow::~ClientWindow()
@@ -20,29 +22,29 @@ ClientWindow::~ClientWindow()
     delete ui;
 }
 
+
 void ClientWindow::on_button_connectToServer_clicked()
 {
-    client.setName(ui->lineEdit_Name->text());
-    client.newConnect();
-    ui->lineEdit_Name->setEnabled(0); //для того чтобы нельзя было менять имя после подключения
+    client.setConnect(ui->lineEdit_Name->text(), "127.0.0.1", 5555);
+    ui->lineEdit_Name->setEnabled(0);       //для того чтобы нельзя было менять имя после подключения
+    ui->button_sendMessage->setEnabled(1);
+    ui->button_connectToServer->setEnabled(0);
 }
 
 void ClientWindow::on_button_sendMessage_clicked()
 {
-    client.sendMessage("1" + ui->textEdit->toPlainText());
-    if (client.getNameClientWithCurrentDialog() == "")
-        ui->textBrowser->append("Message to server: " + ui->textEdit->toPlainText());
-    else
-        ui->textBrowser->append("Message to " + client.getNameClientWithCurrentDialog() + ": " + ui->textEdit->toPlainText());
-    ui->textEdit->clear();
+    if (client.getNameClientWithCurrentDialog() != "")
+    {
+        client.getMessageFromWindow(ui->textEdit_message->toPlainText());
+        ui->textBrowser_dialog->append(ui->lineEdit_Name->text() + " to " + client.getNameClientWithCurrentDialog() + ": " + ui->textEdit_message->toPlainText());
+        ui->textEdit_message->clear();
+    }
 }
 
-void ClientWindow::updateTextBrowser(QString msg)
+void ClientWindow::updateTextBrowser_messages(QString msg)
 {
-    if (ui->groupBox->title() == "Dialog with server")
-        ui->textBrowser->append("Responce from server: " + msg);
-    else
-        ui->textBrowser->append("Responce from " + client.getNameClientWithCurrentDialog() + msg);
+    QStringList structMsg = msg.split(';');
+    ui->textBrowser_dialog->append(structMsg[0] + ": " + structMsg[1]);
 }
 
 void ClientWindow::checkName()
@@ -53,15 +55,15 @@ void ClientWindow::checkName()
     }
 }
 
-void ClientWindow::addItemsToList(QStringList arg_data)
+void ClientWindow::changeUsersInList(QStringList arg_data)
 {
     for (int i = 0; i < arg_data.length(); i++)
         if (arg_data[i] == "")
-            arg_data.removeAt(i); //для удаление пустого элемента в конце списка
+            arg_data.removeAt(i);   //для удаление пустого элемента в конце списка
 
     if (loadListOfClient == 0)
     {
-        ui->listWidget->addItems(arg_data);
+        ui->listWidget_activeClients->addItems(arg_data);
         currentListOfClients = arg_data;
         loadListOfClient = 1;
     }
@@ -78,7 +80,7 @@ void ClientWindow::addItemsToList(QStringList arg_data)
             }
 
             QListWidgetItem *item = new QListWidgetItem(changedClient);
-            ui->listWidget->addItem(item);
+            ui->listWidget_activeClients->addItem(item);
             currentListOfClients.append(changedClient);
         }
         else
@@ -89,16 +91,19 @@ void ClientWindow::addItemsToList(QStringList arg_data)
                     changedClient = currentListOfClients[i];
             }
 
-            QString stringOnGroupBox = "Dialog with: " + changedClient; //проверка на то, что удаляемый клинт не тот, с котором ведется текущий диалог
-            QString currenttextOnGroupBox = ui->groupBox_2->title(); //если удаляется текущий клиент, то имя груп бокса сбрасывается на дефорлтное
-            if (stringOnGroupBox == currenttextOnGroupBox)
-                ui->groupBox_2->setTitle("Dialog with server");
+            QString stringOnGroupBox = "Dialog with: " + changedClient;     //проверка на то, что удаляемый клинт не тот, с котором ведется текущий диалог
+            QString currenttextOnGroupBox = ui->groupBox_dialog->title();
+            if (stringOnGroupBox == currenttextOnGroupBox)                  //если удаляется текущий клиент, то имя груп бокса сбрасывается на дефорлтное
+            {
+                client.selectUserForDialog("");
+                ui->groupBox_dialog->setTitle("Dialog with: ");
+            }
 
             QList<QListWidgetItem*> out;
-            out = ui->listWidget->findItems(changedClient, Qt::MatchExactly);
+            out = ui->listWidget_activeClients->findItems(changedClient, Qt::MatchExactly);
             foreach(QListWidgetItem* item, out){
-                ui->listWidget->removeItemWidget(item);
-                delete item; // Qt documentation warnings you to destroy item to effectively remove it from QListWidget.
+                ui->listWidget_activeClients->removeItemWidget(item);
+                delete item;                                                // Qt documentation warnings you to destroy item to effectively remove it from QListWidget.
             }
 
             for (int i = 0; i < currentListOfClients.length(); i++)
@@ -108,12 +113,22 @@ void ClientWindow::addItemsToList(QStringList arg_data)
     }
 }
 
-void ClientWindow::changeTitleGroupBox()
+void ClientWindow::changeUserDialogWith()
 {
-    if (ui->listWidget->currentItem()->text() == client.getName())
+    if (ui->listWidget_activeClients->currentItem()->text() == client.getName())
         return;
-    ui->groupBox_2->setTitle("Dialog with: " + ui->listWidget->currentItem()->text());
+    ui->groupBox_dialog->setTitle("Dialog with: " + ui->listWidget_activeClients->currentItem()->text());
 
-    client.setNameClientWithCurrentDialog(ui->listWidget->currentItem()->text());
-    client.selectUserForDialog(ui->listWidget->currentItem()->text());
+    client.selectUserForDialog(ui->listWidget_activeClients->currentItem()->text());
+}
+
+void ClientWindow::serverDisconnected()
+{
+    ui->button_connectToServer->setEnabled(1);
+    ui->button_sendMessage->setEnabled(0);
+    ui->lineEdit_Name->setEnabled(1);
+    ui->listWidget_activeClients->clear();
+    currentListOfClients.clear();
+    loadListOfClient = 0;
+    ui->textBrowser_dialog->append("<nobr><font color=\"red\">Server closed at " + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + "</nobr>");
 }

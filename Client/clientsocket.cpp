@@ -2,39 +2,107 @@
 
 ClientSocket::ClientSocket(QObject *parent) : QObject(parent){}
 
-//void ClientSocket::slot_updateStatus(QString status)
-//{
-//    emit updateStatus(status);
-//}
-
-//void ClientSocket::sendMessage(QString msg)
-//{
-//    m_socket->write(msg.toUtf8());
-//}
-
-//void ClientSocket::updateActiveClient(QString arg_data)
-//{
-//    QStringList list = arg_data.split(';');
-//    emit updateClients(list);
-//}
-
-//void ClientSocket::setNameClientWithCurrentDialog(QString arg_name)
-//{
-//    nameClientWithCurrentDialog = arg_name;
-//}
-
-//QString ClientSocket::getNameClientWithCurrentDialog()
-//{
-//    return nameClientWithCurrentDialog;
-//}
-//void ClientSocket::selectUserForDialog(QString arg_user)
-//{
-//    m_socket->write("2" + arg_user.toUtf8());
-//}
-
-void ClientSocket::setName(QString arg_name)
+void ClientSocket::setConnect(QString name, QString ipAddres, qint16 port)
 {
-    m_NameOfUser = arg_name;
+    m_port = port;
+    m_socket = new QTcpSocket(this);
+    m_socket->connectToHost(ipAddres, m_port);
+    connect(m_socket, &QTcpSocket::connected, this, &ClientSocket::onConnected);
+    m_nameClientWithCurrentDialog = "";
+    m_NameOfUser = name;
+}
+
+void ClientSocket::onConnected()
+{
+    Message msg(m_NameOfUser, Message::comAutchRequest, m_NameOfUser, m_nameClientWithCurrentDialog);
+    sendMessage(msg);
+    emit updateMessages("Server;<nobr><font color=\"green\">Successfuly connected to server<br></nobr>");
+    connect(m_socket, &QTcpSocket::readyRead, this, &ClientSocket::socketRead);
+    connect(m_socket, &QTcpSocket::disconnected, this, &ClientSocket::socketDisconnected);
+}
+
+void ClientSocket::socketDisconnected()
+{
+    emit serverDisconnected();
+    m_socket->deleteLater();
+}
+
+void ClientSocket::socketRead()
+{
+    QDataStream stream_in(m_socket);
+    Message msg_in;
+    m_blockSize = 0;
+
+    if(m_blockSize == 0)
+    {
+        while (m_socket->bytesAvailable() < (int)sizeof(quint16))
+        {
+            continue;
+        }
+        stream_in >> m_blockSize;
+    }
+
+    while (m_socket->bytesAvailable() < m_blockSize)
+    {
+        continue;
+    }
+    m_blockSize = 0;
+
+    stream_in >> msg_in;
+
+    switch (msg_in.getTypeMessage())
+    {
+    case Message::comUsersOnline:
+    {
+       updateActiveClient(msg_in.getTextData());
+       break;
+    }
+    case Message::comTextMessage:
+    {
+        QString senderAndData = msg_in.getSenderName() + ';' + msg_in.getTextData();
+        emit updateMessages(senderAndData);
+        break;
+    }
+    case Message::comServerClosed:
+    {
+        m_socket->deleteLater();
+        break;
+    }
+    }
+}
+
+void ClientSocket::sendMessage(Message &msg)
+{
+    QByteArray block;
+    QDataStream out(&block, QIODevice::WriteOnly);
+    out << (quint16)0 << msg;
+    out.device()->seek(0);
+    out << (quint16)(block.size() - sizeof(quint16));
+    m_socket->write(block);
+}
+
+void ClientSocket::updateActiveClient(QString arg_data)
+{
+    QStringList list = arg_data.split(';');
+    emit updateClients(list);
+}
+
+QString ClientSocket::getNameClientWithCurrentDialog()
+{
+    return m_nameClientWithCurrentDialog;
+}
+
+void ClientSocket::getMessageFromWindow(QString data)
+{
+    Message msg(data, Message::comTextMessage, m_NameOfUser, m_nameClientWithCurrentDialog);
+    sendMessage(msg);
+}
+
+void ClientSocket::selectUserForDialog(QString arg_user)
+{
+    m_nameClientWithCurrentDialog = arg_user;
+    Message msg(arg_user, Message::comStartDialogWithUser, m_NameOfUser, m_nameClientWithCurrentDialog);
+    sendMessage(msg);
 }
 
 QString ClientSocket::getName()
@@ -42,83 +110,7 @@ QString ClientSocket::getName()
     return m_NameOfUser;
 }
 
-void ClientSocket::newConnect()
+QString ClientSocket::getNameClientDialogWith()
 {
-    m_port = 5555;
-    m_socket = new QTcpSocket(this);
-    m_socket->connectToHost("127.0.0.1", m_port);
-    connect(m_socket, &QTcpSocket::connected, this, &ClientSocket::onConnected);
-    nameClientWithCurrentDialog = "";
-}
-
-void ClientSocket::onConnected()
-{
-    //после подключения следует отправить запрос на авторизацию
-    QByteArray block;
-    QDataStream out(&block, QIODevice::WriteOnly);
-    //резервируем 2 байта для размера блока.
-    //третий байт - команда
-    out << (quint16)0 << (quint8)comSendName << m_NameOfUser;
-    //возваращаемся в начало
-    out.device()->seek(0);
-    //вписываем размер блока на зарезервированное место
-    out << (quint16)(block.size() - sizeof(quint16));
-    m_socket->write(block);
-
-    slot_updateStatus("<nobr><font color=\"green\">Successfuly connected to server<br></nobr>");
-    connect(m_socket, &QTcpSocket::readyRead, this, &ClientSocket::sockRead);
-    connect(m_socket, &QTcpSocket::disconnected, this, &ClientSocket::sockDisconnected);
-}
-
-void ClientSocket::sockDisconnected()
-{
-    m_socket->deleteLater();
-}
-
-void ClientSocket::sockRead()
-{
-//    if (m_socket->waitForConnected(500))
-//    {
-//        m_socket->waitForReadyRead(500);
-//        data = m_socket->readAll();
-//        if (data[0] == "1") // отправляет сервер при отправке любого сообщения
-//        {
-//            data = data.remove(0,1);
-//            slot_updateStatus(data);
-//        }
-//        else if (data[0] == "0") //отправляет сервер при отправке списка клиентов каждому из клиентов
-//        {
-//            data = data.remove(0,1);
-//            updateActiveClient(data);
-//        }
-//    }
-
-    QDataStream in(m_socket);
-    //если считываем новый блок первые 2 байта это его размер
-    if (m_blockSize == 0) {
-        //если пришло меньше 2 байт ждем пока будет 2 байта
-        if (m_socket->bytesAvailable() < (int)sizeof(quint16))
-            return;
-        //считываем размер (2 байта)
-        in >> m_blockSize;
-        qDebug() << "_blockSize now " << m_blockSize;
-    }
-    //ждем пока блок придет полностью
-    if (m_socket->bytesAvailable() < m_blockSize)
-        return;
-    else
-        //можно принимать новый блок
-        m_blockSize = 0;
-    //3 байт - команда серверу
-    quint8 command;
-    in >> command;
-    qDebug() << "Received command " << command;
-
-    switch (command)
-    {
-        case comGetUsersOnline:
-        {
-
-        }
-    }
+    return m_nameClientWithCurrentDialog;
 }

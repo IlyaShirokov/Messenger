@@ -2,7 +2,8 @@
 #define SERVERWINDOW_H
 
 #include <QMainWindow>
-#include "serversocket.h"
+
+#include <serversocket.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ServerWindow; }
@@ -17,19 +18,20 @@ public:
     ~ServerWindow();
 
 private slots:
-    void on_button_startServer_clicked();  //действие при нажати на кнопку запуска сервера
-    void on_button_stopServer_clicked(); //действие при нажати на кнопку стоп сервера
-    void on_button_send_clicked(); //действия при нажатии на отправку сообщения
-    void updateTextBrowser_log(QString message); //слот для обновления информации о логе сервера
-    void updateTextBrowser_messages(QStringList messages); // слот для обновления информации о сообщениях
-    void updateListActiveNEWClients(QString arg_Client); //слот для обновления информации о новых активных подключениях
-    void updateListActiveDISCONNECTClients(QString arg_Client);//слот для обновления информации о отключившихся подключениях
-    void changeTitleGroupBox(); //слот для изменения имени групбокса
-    void changeCurrentClient(); // вызывается при выборе нового клиента из списка подключений с которым вести общение
+    void on_button_startServer_clicked();                       //действия при нажатии на кнопку "старт сервер"
+    void on_button_stopServer_clicked();                        //действия при нажатии на кнопку "стоп сервер"
+    void updateTextBrowser_log(QString message);                //слот для обновления информации о логе сервера
+    void updateTextBrowser_messages(QStringList messages);      //слот для обновления информации о сообщениях
+    void updateListActiveClients(QStringList arg_Clients);      //слот для обновления активных подключениях
+    void changeCurrentClient();                                 // вызывается при выборе нового клиента из списка подключений с которым вести общение
+    void checkIpAndPort();                                      //проверка корректности введеного адреса и порта
+    void setButtonSendEnabled(int state);                       //активация кнопки отправки при нажатии галочки "отправить всем"
+    void on_button_sendMsg_clicked();                           //действия при нажатии на кнопку отправки сообщения
 
 private:
     Ui::ServerWindow *ui;
     ServerSocket server;
-    QStringList currentListOfUsers;
+    QStringList currentListOfClients;           //список активных клиентов
+    bool loadListOfClient;                      //становится единицей при первой загрузке списка клиентов при подключении
 };
 #endif // SERVERWINDOW_H

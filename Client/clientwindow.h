@@ -2,6 +2,7 @@
 #define CLIENTWINDOW_H
 
 #include <QMainWindow>
+#include <QDateTime>
 #include "clientsocket.h"
 
 QT_BEGIN_NAMESPACE
@@ -17,17 +18,18 @@ public:
     ~ClientWindow();
 
 private slots:
-    void on_button_connectToServer_clicked();
-    void on_button_sendMessage_clicked();
-    void updateTextBrowser(QString msg);     //слод для обнолвения информации в nextBrowser
-    void checkName(); //для проверки непустой строки в имени
-    void addItemsToList(QStringList arg_data);
-    void changeTitleGroupBox();
+    void on_button_connectToServer_clicked();           //действия при нажатии на кнопку подключения к серверу
+    void on_button_sendMessage_clicked();               //действия при нажатии на кнопку отправки сообщения
+    void updateTextBrowser_messages(QString msg);       //обновление списка сообщений
+    void checkName();                                   //проверка корректности введеного имени
+    void changeUsersInList(QStringList arg_data);       //обновление списка активных пользователей
+    void changeUserDialogWith();                        //смена пользователя с которым ведется диалог
+    void serverDisconnected();                          //действия при потере соединения с сервером
 
 private:
     Ui::ClientWindow *ui;
     ClientSocket client;
-    QStringList currentListOfClients;
-    bool loadListOfClient; //становится единицей при первой загрузке списка клиентов при подключении
+    QStringList currentListOfClients;       //список активных клиентов
+    bool loadListOfClient;                  //становится единицей при первой загрузке списка клиентов при подключении
 };
 #endif // CLIENTWINDOW_H
