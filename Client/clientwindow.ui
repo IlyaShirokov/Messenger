@@ -54,7 +54,7 @@ Port %port%</string>
       <property name="title">
        <string>Dialog with: </string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="5,1,0">
+      <layout class="QVBoxLayout" name="verticalLayout_2" stretch="5,1">
        <item>
         <widget class="QTextBrowser" name="textBrowser_dialog"/>
        </item>
@@ -73,27 +73,6 @@ Port %port%</string>
            </property>
            <property name="text">
             <string>Send</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Enter your name: </string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="lineEdit_Name"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="button_connectToServer">
-           <property name="text">
-            <string>Connect to server</string>
            </property>
           </widget>
          </item>

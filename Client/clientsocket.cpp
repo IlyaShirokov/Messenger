@@ -1,22 +1,33 @@
 #include "clientsocket.h"
 
-ClientSocket::ClientSocket(QObject *parent) : QObject(parent){}
+ClientSocket::ClientSocket(QObject *parent) : QObject(parent)
+{
+    registrationRequest = false;
+}
 
-void ClientSocket::setConnect(QString name, QString ipAddres, qint16 port)
+void ClientSocket::setConnect(QString name, QString passwd, QString ipAddres, qint16 port)
 {
     m_port = port;
+    m_password  = passwd;
+    m_NameOfUser = name;
+    m_nameClientWithCurrentDialog = "";
     m_socket = new QTcpSocket(this);
     m_socket->connectToHost(ipAddres, m_port);
     connect(m_socket, &QTcpSocket::connected, this, &ClientSocket::onConnected);
-    m_nameClientWithCurrentDialog = "";
-    m_NameOfUser = name;
 }
 
 void ClientSocket::onConnected()
 {
-    Message msg(m_NameOfUser, Message::comAutchRequest, m_NameOfUser, m_nameClientWithCurrentDialog);
-    sendMessage(msg);
-    emit updateMessages("Server;<nobr><font color=\"green\">Successfuly connected to server<br></nobr>");
+    if (registrationRequest)
+    {
+        Message msg(m_password, Message::comRegistrationRequest, m_NameOfUser, m_nameClientWithCurrentDialog);
+        sendMessage(msg);
+    }
+    else
+    {
+        Message msg(m_password, Message::comAutchRequest, m_NameOfUser, m_nameClientWithCurrentDialog);
+        sendMessage(msg);
+    }
     connect(m_socket, &QTcpSocket::readyRead, this, &ClientSocket::socketRead);
     connect(m_socket, &QTcpSocket::disconnected, this, &ClientSocket::socketDisconnected);
 }
@@ -68,6 +79,30 @@ void ClientSocket::socketRead()
         m_socket->deleteLater();
         break;
     }
+    case Message::comSuccessfulAuth:
+    {
+       emit displayClientWindow();
+       emit updateMessages("Server;<nobr><font color=\"green\">Successfuly connected to server<br></nobr>");
+       break;
+    }
+    case Message::comDeclineAuth:
+    {
+       emit loginUserAnswerDB(false);
+       m_socket->deleteLater();
+       break;
+    }
+    case Message::comSuccessfulRegistration:
+    {
+        emit registerUserAnswerDB(true);
+        m_socket->deleteLater();
+       break;
+    }
+    case Message::comDeclineRegistration:
+    {
+       emit registerUserAnswerDB(false);
+       m_socket->deleteLater();
+       break;
+    }
     }
 }
 
@@ -113,4 +148,10 @@ QString ClientSocket::getName()
 QString ClientSocket::getNameClientDialogWith()
 {
     return m_nameClientWithCurrentDialog;
+}
+
+void ClientSocket::registerClient(QString name, QString passwd, QString ipAddres, qint16 port)
+{
+    registrationRequest = true;
+    setConnect(name, passwd, ipAddres, port);
 }

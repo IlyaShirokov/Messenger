@@ -1,4 +1,4 @@
-QT       += core gui network
+QT       += core gui network sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -9,17 +9,22 @@ CONFIG += c++11
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    ../Common/connectdb.cpp \
     ../Common/message.cpp \
+    authentication.cpp \
     clientsocket.cpp \
     main.cpp \
     clientwindow.cpp
 
 HEADERS += \
+    ../Common/connectdb.h \
     ../Common/message.h \
+    authentication.h \
     clientsocket.h \
-    clientwindow.h
+    clientwindow.h \
 
 FORMS += \
+    authentication.ui \
     clientwindow.ui
 
 # Default rules for deployment.

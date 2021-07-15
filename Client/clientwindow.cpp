@@ -6,15 +6,19 @@ ClientWindow::ClientWindow(QWidget *parent)
     , ui(new Ui::ClientWindow)
 {
     ui->setupUi(this);
-    ui->button_connectToServer->setEnabled(0);
-    ui->button_sendMessage->setEnabled(0);
-    loadListOfClient = 0;
+    loadListOfClient = 0;  
+
+    auth.show();
+    connect(&auth, &Authentication::sendLogin, &client, &ClientSocket::setConnect);
+    connect(&auth, &Authentication::sendRegister, &client, &ClientSocket::registerClient);
+    connect(&client, &ClientSocket::loginUserAnswerDB, &auth, &Authentication::loginUserAnswerDB);
+    connect(&client, &ClientSocket::registerUserAnswerDB, &auth, &Authentication::registerUserAnswerDB);
 
     connect(&client, &ClientSocket::updateMessages, this, &ClientWindow::updateTextBrowser_messages);               //для записи в текстбраузер из другого класса
-    connect(ui->lineEdit_Name, &QLineEdit::textEdited, this, &ClientWindow::checkName);                             //для проверки на непустоe имя
     connect(&client, &ClientSocket::updateClients, this, &ClientWindow::changeUsersInList);                         //для заполнения листа активных клиентов
     connect(ui->listWidget_activeClients, &QListWidget::doubleClicked, this, &ClientWindow::changeUserDialogWith);  //выбор клиента для диалога с ним
     connect(&client, &ClientSocket::serverDisconnected, this, &ClientWindow::serverDisconnected);                   //действия при потере соеднинения с сервером
+    connect(&client, &ClientSocket::displayClientWindow, this, &ClientWindow::display);                             //сигнал от сокета о успешкном подключении и отображении главного окна
 }
 
 ClientWindow::~ClientWindow()
@@ -22,21 +26,12 @@ ClientWindow::~ClientWindow()
     delete ui;
 }
 
-
-void ClientWindow::on_button_connectToServer_clicked()
-{
-    client.setConnect(ui->lineEdit_Name->text(), "127.0.0.1", 5555);
-    ui->lineEdit_Name->setEnabled(0);       //для того чтобы нельзя было менять имя после подключения
-    ui->button_sendMessage->setEnabled(1);
-    ui->button_connectToServer->setEnabled(0);
-}
-
 void ClientWindow::on_button_sendMessage_clicked()
 {
     if (client.getNameClientWithCurrentDialog() != "")
     {
         client.getMessageFromWindow(ui->textEdit_message->toPlainText());
-        ui->textBrowser_dialog->append(ui->lineEdit_Name->text() + " to " + client.getNameClientWithCurrentDialog() + ": " + ui->textEdit_message->toPlainText());
+        ui->textBrowser_dialog->append(client.getName() + " to " + client.getNameClientWithCurrentDialog() + ": " + ui->textEdit_message->toPlainText());
         ui->textEdit_message->clear();
     }
 }
@@ -45,14 +40,6 @@ void ClientWindow::updateTextBrowser_messages(QString msg)
 {
     QStringList structMsg = msg.split(';');
     ui->textBrowser_dialog->append(structMsg[0] + ": " + structMsg[1]);
-}
-
-void ClientWindow::checkName()
-{
-    if (ui->lineEdit_Name->text() != "")
-    {
-        ui->button_connectToServer->setEnabled(1);
-    }
 }
 
 void ClientWindow::changeUsersInList(QStringList arg_data)
@@ -124,11 +111,15 @@ void ClientWindow::changeUserDialogWith()
 
 void ClientWindow::serverDisconnected()
 {
-    ui->button_connectToServer->setEnabled(1);
     ui->button_sendMessage->setEnabled(0);
-    ui->lineEdit_Name->setEnabled(1);
     ui->listWidget_activeClients->clear();
     currentListOfClients.clear();
     loadListOfClient = 0;
     ui->textBrowser_dialog->append("<nobr><font color=\"red\">Server closed at " + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + "</nobr>");
+}
+
+void ClientWindow::display()
+{
+    auth.hide();
+    this->show();
 }
