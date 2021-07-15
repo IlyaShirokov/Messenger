@@ -8,7 +8,6 @@ ClientWindow::ClientWindow(QWidget *parent)
     ui->setupUi(this);
     loadListOfClient = 0;  
 
-    auth.show();
     connect(&auth, &Authentication::sendLogin, &client, &ClientSocket::setConnect);
     connect(&auth, &Authentication::sendRegister, &client, &ClientSocket::registerClient);
     connect(&client, &ClientSocket::loginUserAnswerDB, &auth, &Authentication::loginUserAnswerDB);
@@ -19,6 +18,8 @@ ClientWindow::ClientWindow(QWidget *parent)
     connect(ui->listWidget_activeClients, &QListWidget::doubleClicked, this, &ClientWindow::changeUserDialogWith);  //выбор клиента для диалога с ним
     connect(&client, &ClientSocket::serverDisconnected, this, &ClientWindow::serverDisconnected);                   //действия при потере соеднинения с сервером
     connect(&client, &ClientSocket::displayClientWindow, this, &ClientWindow::display);                             //сигнал от сокета о успешкном подключении и отображении главного окна
+
+    auth.show();
 }
 
 ClientWindow::~ClientWindow()

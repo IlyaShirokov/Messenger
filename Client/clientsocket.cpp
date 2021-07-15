@@ -18,6 +18,8 @@ void ClientSocket::setConnect(QString name, QString passwd, QString ipAddres, qi
 
 void ClientSocket::onConnected()
 {
+    connect(m_socket, &QTcpSocket::readyRead, this, &ClientSocket::socketRead);
+    connect(m_socket, &QTcpSocket::disconnected, this, &ClientSocket::socketDisconnected);
     if (registrationRequest)
     {
         Message msg(m_password, Message::comRegistrationRequest, m_NameOfUser, m_nameClientWithCurrentDialog);
@@ -28,8 +30,6 @@ void ClientSocket::onConnected()
         Message msg(m_password, Message::comAutchRequest, m_NameOfUser, m_nameClientWithCurrentDialog);
         sendMessage(msg);
     }
-    connect(m_socket, &QTcpSocket::readyRead, this, &ClientSocket::socketRead);
-    connect(m_socket, &QTcpSocket::disconnected, this, &ClientSocket::socketDisconnected);
 }
 
 void ClientSocket::socketDisconnected()
@@ -83,6 +83,7 @@ void ClientSocket::socketRead()
     {
        emit displayClientWindow();
        emit updateMessages("Server;<nobr><font color=\"green\">Successfuly connected to server<br></nobr>");
+       updateActiveClient(msg_in.getTextData());
        break;
     }
     case Message::comDeclineAuth:

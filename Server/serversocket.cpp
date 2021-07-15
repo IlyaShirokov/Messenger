@@ -88,12 +88,26 @@ void ServerSocket::slotServerRead()
     switch (msg_in.getTypeMessage())
     {
     case Message::comAutchRequest:
-        updateStatus_log("<nobr><font color=\"green\">Got hostname: </nobr>" + msg_in.getSenderName());
-        ListOfClients[index_of_client]->setName(msg_in.getSenderName());
-        ListNameOfClients.append(msg_in.getSenderName());
-        emit sendClientToMainWindow(ListNameOfClients);
+    {
+        if(true) //здесь должен вызываться запрос к бд, который проверяет существует ли такое имя и совпаадет ли пароль в бд===============================
+        {
+            updateStatus_log("<nobr><font color=\"green\">Got hostname: </nobr>" + msg_in.getSenderName());
+            ListOfClients[index_of_client]->setName(msg_in.getSenderName());
+            ListNameOfClients.append(msg_in.getSenderName());
+            emit sendClientToMainWindow(ListNameOfClients);
+            QString stringOfClient = sendListOfActiveClient(ListNameOfClients, ListOfClients[index_of_client]->getSocket());
+            Message msg_out(stringOfClient, Message::comSuccessfulAuth, "Server", ListOfClients[index_of_client]->getName());
+            sendMessage(msg_out, ListOfClients[index_of_client]->getSocket());
+        }
+        else
+        {
+            Message msg_out("login fail", Message::comDeclineAuth, "Server", ListOfClients[index_of_client]->getName());
+            sendMessage(msg_out, ListOfClients[index_of_client]->getSocket());
+        }
         break;
+    }
     case Message::comTextMessage:
+    {
         if (ListOfClients[index_of_client]->getDialogSocket() != nullptr)
         {
             int dialogWith;
@@ -109,7 +123,9 @@ void ServerSocket::slotServerRead()
             sendMessage(msg_out, ListOfClients[index_of_client]->getDialogSocket());
         }
         break;
+    }
     case Message::comStartDialogWithUser:
+    {
         if (msg_in.getDestinationName() != "")
         {
             int dialogWith;
@@ -119,8 +135,23 @@ void ServerSocket::slotServerRead()
                     break;
             }
             ListOfClients[index_of_client]->setDialogSocket(ListOfClients[dialogWith]->getSocket());
-            break;
         }
+        break;
+    }
+    case Message::comRegistrationRequest:
+    {
+        if(true) //здесь должен вызываться запрос к бд, который проверяет существует не занято ли такое имя. если нет, то создать нового пользователя с этим паролем и логином===============================
+        {
+            Message msg_out("registration ok", Message::comSuccessfulRegistration, "Server", ListOfClients[index_of_client]->getName());
+            sendMessage(msg_out, ListOfClients[index_of_client]->getSocket());
+        }
+        else
+        {
+            Message msg_out("registration fail", Message::comDeclineRegistration, "Server", ListOfClients[index_of_client]->getName());
+            sendMessage(msg_out, ListOfClients[index_of_client]->getSocket());
+        }
+        break;
+    }
     }
 }
 
@@ -203,20 +234,28 @@ void ServerSocket::selectCurrentClient(QString arg_name)
     currentClient = ListOfClients[index_of_client]->getSocket();
 }
 
-void ServerSocket::sendListOfActiveClient(QStringList test)
+QString ServerSocket::sendListOfActiveClient(QStringList listClients, QTcpSocket* client)
 {
     QString stringofClients = "";
-    for (int i = 0; i < test.length(); i++)
+    for (int i = 0; i < listClients.length(); i++)
     {
-        stringofClients += test[i];
+        stringofClients += listClients[i];
         stringofClients += ";";
     }
 
     for(int i = 0; i < ListOfClients.length(); i++)
     {
-        Message msg(stringofClients, Message::comUsersOnline, "Server", ListOfClients[i]->getName());
-        sendMessage(msg, ListOfClients[i]->getSocket());
+        if (ListOfClients[i]->getSocket() == client)
+        {
+            continue;
+        }
+        else
+        {
+            Message msg(stringofClients, Message::comUsersOnline, "Server", ListOfClients[i]->getName());
+            sendMessage(msg, ListOfClients[i]->getSocket());
+        }
     }
+    return stringofClients;
 }
 
 void ServerSocket::getMessageFromMainWindow(QString data, bool toAll)

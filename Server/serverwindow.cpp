@@ -117,7 +117,6 @@ void ServerWindow::updateListActiveClients(QStringList arg_Clients)
                     currentListOfClients.removeAt(i);
         }
     }
-    server.sendListOfActiveClient(currentListOfClients);
 }
 
 void ServerWindow::changeCurrentClient()
