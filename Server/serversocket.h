@@ -8,6 +8,7 @@
 
 #include "activeclient.h"
 #include "..\\Common\\message.h"
+#include "..\\Common\\connectdb.h"
 
 class ServerSocket : public QObject
 {
@@ -16,17 +17,18 @@ public:
     explicit ServerSocket(QObject *parent = nullptr);
     ~ServerSocket();
 
-    void initServer(QString ipAddres, qint16 port);                             //действия при старте сервера и нажати на кнопку старт сервер
-    void onNewConnection();                                                     //действия при подключении клиента
-    void slotServerRead();                                                      //дейсвтия при появлении данных на сокете
-    void slotClientDisconnected();                                              //действия при отключении клиента
-    void getMessageFromWindow(QString data);                                    //получение введенного сообщения из главного окна
-    void sendMessage(Message &msg, QTcpSocket* client);                         //функция отправки сообщения
-    void onStopingClicked();                                                    //действия при нажатии на кнопку остановки сервера
-    void selectCurrentClient(QString arg_name);                                 //устанавливает текущего клиента для общения
-    QString sendListOfActiveClient(QStringList listClients, QTcpSocket* client);//получение списка активных клиентов и отправка его все остальным клиентам
-    void getMessageFromMainWindow(QString data, bool toAll);                    //получение введенного сообщения из главного окна
-    QString getNameCurrentClient();                                             //получение имени клиента с которым ведется диалог
+    void initServer(QString ipAddres, qint16 port);             //действия при старте сервера и нажати на кнопку старт сервер
+    void onNewConnection();                                     //действия при подключении клиента
+    void slotServerRead();                                      //дейсвтия при появлении данных на сокете
+    void slotClientDisconnected();                              //действия при отключении клиента
+    void getMessageFromWindow(QString data);                    //получение введенного сообщения из главного окна
+    void sendMessage(Message &msg, QTcpSocket* client);         //функция отправки сообщения
+    void onStopingClicked();                                    //действия при нажатии на кнопку остановки сервера
+    void selectCurrentClient(QString arg_name);                 //устанавливает текущего клиента для общения
+    void sendListOfActiveClient(QStringList listClients);       //получение списка активных клиентов и отправка его все остальным клиентам
+    void getMessageFromMainWindow(QString data, bool toAll);    //получение введенного сообщения из главного окна
+    QString getNameCurrentClient();                             //получение имени клиента с которым ведется диалог
+    void readHistoryOfMsgFromDB(QString sender);
 
 signals:
     void updateStatus_log(QString status);                  //обновление лога сервера в mainWindow
@@ -48,6 +50,7 @@ private:
     QTcpSocket* currentClient;                  //клиент, которому сервер в текущий момент отправляет сообщения
     QString     m_nameClientWithCurrentDialog;  //имя клиента с которым ведется диалог
     quint16     m_blockSize;                    //текущий размер блока данных
+    ConnectDB   m_db;
 
 };
 

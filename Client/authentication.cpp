@@ -99,7 +99,7 @@ void Authentication::showLoginPasswd(int state)
 
 void Authentication::loginUserAnswerDB(bool ans)
 {
-    if (ans)
+    if (!ans)
     {
         ui->label_responseFromDBlogin->setText("<font color=\"red\">Wrong username / password");
     }

@@ -3,6 +3,7 @@
 ClientSocket::ClientSocket(QObject *parent) : QObject(parent)
 {
     registrationRequest = false;
+    authorizatesNow = false;
 }
 
 void ClientSocket::setConnect(QString name, QString passwd, QString ipAddres, qint16 port)
@@ -10,6 +11,7 @@ void ClientSocket::setConnect(QString name, QString passwd, QString ipAddres, qi
     m_port = port;
     m_password  = passwd;
     m_NameOfUser = name;
+    m_ipAddress = ipAddres;
     m_nameClientWithCurrentDialog = "";
     m_socket = new QTcpSocket(this);
     m_socket->connectToHost(ipAddres, m_port);
@@ -24,6 +26,7 @@ void ClientSocket::onConnected()
     {
         Message msg(m_password, Message::comRegistrationRequest, m_NameOfUser, m_nameClientWithCurrentDialog);
         sendMessage(msg);
+        registrationRequest = false;
     }
     else
     {
@@ -34,7 +37,8 @@ void ClientSocket::onConnected()
 
 void ClientSocket::socketDisconnected()
 {
-    emit serverDisconnected();
+    emit serverDisconnected(authorizatesNow);
+    authorizatesNow = false;
     m_socket->deleteLater();
 }
 
@@ -81,9 +85,9 @@ void ClientSocket::socketRead()
     }
     case Message::comSuccessfulAuth:
     {
-       emit displayClientWindow();
+       authorizatesNow = true;
+       emit displayClientWindow(m_NameOfUser, m_ipAddress, m_port);
        emit updateMessages("Server;<nobr><font color=\"green\">Successfuly connected to server<br></nobr>");
-       updateActiveClient(msg_in.getTextData());
        break;
     }
     case Message::comDeclineAuth:
@@ -96,7 +100,7 @@ void ClientSocket::socketRead()
     {
         emit registerUserAnswerDB(true);
         m_socket->deleteLater();
-       break;
+        break;
     }
     case Message::comDeclineRegistration:
     {

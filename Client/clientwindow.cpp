@@ -110,17 +110,33 @@ void ClientWindow::changeUserDialogWith()
     client.selectUserForDialog(ui->listWidget_activeClients->currentItem()->text());
 }
 
-void ClientWindow::serverDisconnected()
+void ClientWindow::serverDisconnected(bool flagAuthorizated)
 {
-    ui->button_sendMessage->setEnabled(0);
-    ui->listWidget_activeClients->clear();
-    currentListOfClients.clear();
-    loadListOfClient = 0;
-    ui->textBrowser_dialog->append("<nobr><font color=\"red\">Server closed at " + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + "</nobr>");
+    if(flagAuthorizated)
+    {
+        ui->button_sendMessage->setEnabled(0);
+        ui->listWidget_activeClients->clear();
+        currentListOfClients.clear();
+        loadListOfClient = 0;
+        ui->textBrowser_dialog->append("<nobr><font color=\"red\">Server closed at " + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") + "</nobr>");
+    }
 }
 
-void ClientWindow::display()
+void ClientWindow::display(QString name, QString ipAddres, qint16 port)
 {
+    ui->button_sendMessage->setEnabled(1);
+    ui->label_2->setText("Logged as: " + name);
+    ui->label_3->setText("Server: " + ipAddres + "\nPort: " + QString::number(port));
     auth.hide();
     this->show();
+}
+
+void ClientWindow::on_button_logout_clicked()
+{
+    client.selectUserForDialog("");
+    ui->groupBox_dialog->setTitle("Dialog with: ");
+    auth.show();
+    this->hide();
+    client.socketDisconnected();
+    ui->textBrowser_dialog->clear();
 }

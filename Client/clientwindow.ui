@@ -32,7 +32,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="button_logout">
          <property name="text">
           <string>Logout / change user</string>
          </property>
@@ -56,7 +56,13 @@ Port %port%</string>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="5,1">
        <item>
-        <widget class="QTextBrowser" name="textBrowser_dialog"/>
+        <widget class="QTextBrowser" name="textBrowser_dialog">
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+          </font>
+         </property>
+        </widget>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">

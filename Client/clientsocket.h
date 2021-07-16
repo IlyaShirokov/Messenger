@@ -24,22 +24,24 @@ public:
     void registerClient(QString name, QString passwd, QString ipAddres, qint16 port);   //отправка серу запроса на регистрацию
 
 signals:
-    void updateMessages(QString message);   //сигнал, необходимый для отправки в ClientWindow текста в textBrowser_messages
-    void updateClients(QStringList list);   //сигнал, необходимый для отправки в mainWindow списка активных клиентов в widgetList
-    void serverDisconnected();              //сигнал главному окну, о том, что сервер закрыт
-    void displayClientWindow();             //сигнал главному окну после успешного логина
-    void declineConnect();                  //сигнал окну авторизации, что подключение не удалось
+    void updateMessages(QString message);                                   //сигнал, необходимый для отправки в ClientWindow текста в textBrowser_messages
+    void updateClients(QStringList list);                                   //сигнал, необходимый для отправки в mainWindow списка активных клиентов в widgetList
+    void serverDisconnected(bool glagAuthorizated);                         //сигнал главному окну, о том, что сервер закрыт
+    void displayClientWindow(QString name, QString ipAddres, qint16 port);  //сигнал главному окну после успешного логина
+    void declineConnect();                                                  //сигнал окну авторизации, что подключение не удалось
     void registerUserAnswerDB(bool ans);
     void loginUserAnswerDB(bool ans);
 
 private:
     QTcpSocket* m_socket;                       //объект сокета
     qint16      m_port;                         //используемый порт
+    QString     m_ipAddress;
     QString     m_NameOfUser;                   //имя клиента
     QString     m_password;                     //пароль пользователя
     QString     m_nameClientWithCurrentDialog;  //имя клиента с которым ведется диалог
     quint16     m_blockSize;                    //текущий размер блока данных
-    bool registrationRequest;
+    bool registrationRequest;                   //флаг обозначающий запрос на регистрацию, нужен для того чтобы после подключения отправить правильный код
+    bool authorizatesNow;                       //флаг необходимый для проверки того авторизовались мы или еще нет
 
 };
 

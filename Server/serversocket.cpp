@@ -3,6 +3,10 @@
 ServerSocket::ServerSocket(QObject *parent) : QObject(parent)
 {
     m_serverStatus = NotListening;
+    if(!m_db.connectDB())
+    {
+        emit updateStatus_log("<nobr><font color=\"red\">Cannot connect to database </nobr>");
+    }
 }
 
 ServerSocket::~ServerSocket()
@@ -43,9 +47,6 @@ void ServerSocket::onNewConnection()
 
             connect(ListOfClients.last()->getSocket(), &QTcpSocket::readyRead, this, &ServerSocket::slotServerRead);
             connect(ListOfClients.last()->getSocket(), &QTcpSocket::disconnected, this, &ServerSocket::slotClientDisconnected);
-
-            ListOfClients.last()->addToHistoryOfMessages("<nobr><font color=\"green\">Сonnected to server<br></nobr>");
-            emit updateStatus_log("<nobr><font color=\"green\">New client connected</nobr>");
         }
         else
         {
@@ -89,14 +90,18 @@ void ServerSocket::slotServerRead()
     {
     case Message::comAutchRequest:
     {
-        if(true) //здесь должен вызываться запрос к бд, который проверяет существует ли такое имя и совпаадет ли пароль в бд===============================
+        if((m_db.authorizeUser(msg_in.getSenderName(), msg_in.getTextData())) &&  (msg_in.getSenderName() != "noname"))
         {
-            updateStatus_log("<nobr><font color=\"green\">Got hostname: </nobr>" + msg_in.getSenderName());
+            ListOfClients[index_of_client]->addToHistoryOfMessages("<nobr><font color=\"green\">Сonnected to server<br></nobr>");
+            emit updateStatus_log("<nobr><font color=\"green\">New client connected</nobr>");
+            updateStatus_log("<nobr><font color=\"green\">Got client name: </nobr>" + msg_in.getSenderName());
             ListOfClients[index_of_client]->setName(msg_in.getSenderName());
             ListNameOfClients.append(msg_in.getSenderName());
             emit sendClientToMainWindow(ListNameOfClients);
-            QString stringOfClient = sendListOfActiveClient(ListNameOfClients, ListOfClients[index_of_client]->getSocket());
-            Message msg_out(stringOfClient, Message::comSuccessfulAuth, "Server", ListOfClients[index_of_client]->getName());
+            sendListOfActiveClient(ListNameOfClients);
+            ListOfClients[index_of_client]->getSocket()->flush();
+            readHistoryOfMsgFromDB(ListOfClients[index_of_client]->getName());
+            Message msg_out("stringOfClient", Message::comSuccessfulAuth, "Server", ListOfClients[index_of_client]->getName());
             sendMessage(msg_out, ListOfClients[index_of_client]->getSocket());
         }
         else
@@ -117,8 +122,9 @@ void ServerSocket::slotServerRead()
                     break;
             }
 
-            ListOfClients[index_of_client]->addToHistoryOfMessages(ListOfClients[index_of_client]->getName() + ": " + msg_in.getTextData());
+            ListOfClients[index_of_client]->addToHistoryOfMessages(ListOfClients[index_of_client]->getName() + " to " + ListOfClients[dialogWith]->getName() + ": " + msg_in.getTextData());
             ListOfClients[dialogWith]->addToHistoryOfMessages(ListOfClients[index_of_client]->getName() + ": " + msg_in.getTextData());
+            m_db.writeMessageToDB(msg_in.getTextData(), ListOfClients[index_of_client]->getName(), ListOfClients[dialogWith]->getName());
             Message msg_out(msg_in.getTextData(), Message::comTextMessage, ListOfClients[index_of_client]->getName(), ListOfClients[dialogWith]->getName());
             sendMessage(msg_out, ListOfClients[index_of_client]->getDialogSocket());
         }
@@ -140,8 +146,9 @@ void ServerSocket::slotServerRead()
     }
     case Message::comRegistrationRequest:
     {
-        if(true) //здесь должен вызываться запрос к бд, который проверяет существует не занято ли такое имя. если нет, то создать нового пользователя с этим паролем и логином===============================
+        if((m_db.registerUser(msg_in.getSenderName(), msg_in.getTextData())) &&  (msg_in.getSenderName() != "noname"))
         {
+            updateStatus_log("<nobr><font color=\"green\">New client just registered: </nobr>" + msg_in.getSenderName());
             Message msg_out("registration ok", Message::comSuccessfulRegistration, "Server", ListOfClients[index_of_client]->getName());
             sendMessage(msg_out, ListOfClients[index_of_client]->getSocket());
         }
@@ -165,13 +172,17 @@ void ServerSocket::slotClientDisconnected()
             break;
     }
 
-    updateStatus_log("<nobr><font color=\"red\">Client \"" + ListOfClients[index_of_client]->getName() + "\" disconnected </nobr>");
+    if (ListOfClients[index_of_client]->getName() != "noname")
+    {
+        updateStatus_log("<nobr><font color=\"red\">Client \"" + ListOfClients[index_of_client]->getName() + "\" disconnected </nobr>");
+    }
     ListOfClients[index_of_client]->getSocket()->close();
     for (int i = 0; i < ListNameOfClients.length(); i++)
         if (ListNameOfClients[i] == ListOfClients[index_of_client]->getName())
             ListNameOfClients.removeAt(i);
     emit sendClientToMainWindow(ListNameOfClients);
     ListOfClients.remove(index_of_client);
+    sendListOfActiveClient(ListNameOfClients);
 }
 
 void ServerSocket::getMessageFromWindow(QString data)
@@ -234,7 +245,7 @@ void ServerSocket::selectCurrentClient(QString arg_name)
     currentClient = ListOfClients[index_of_client]->getSocket();
 }
 
-QString ServerSocket::sendListOfActiveClient(QStringList listClients, QTcpSocket* client)
+void ServerSocket::sendListOfActiveClient(QStringList listClients)
 {
     QString stringofClients = "";
     for (int i = 0; i < listClients.length(); i++)
@@ -245,17 +256,9 @@ QString ServerSocket::sendListOfActiveClient(QStringList listClients, QTcpSocket
 
     for(int i = 0; i < ListOfClients.length(); i++)
     {
-        if (ListOfClients[i]->getSocket() == client)
-        {
-            continue;
-        }
-        else
-        {
-            Message msg(stringofClients, Message::comUsersOnline, "Server", ListOfClients[i]->getName());
-            sendMessage(msg, ListOfClients[i]->getSocket());
-        }
+        Message msg(stringofClients, Message::comUsersOnline, "Server", ListOfClients[i]->getName());
+        sendMessage(msg, ListOfClients[i]->getSocket());
     }
-    return stringofClients;
 }
 
 void ServerSocket::getMessageFromMainWindow(QString data, bool toAll)
@@ -285,4 +288,35 @@ void ServerSocket::getMessageFromMainWindow(QString data, bool toAll)
 QString ServerSocket::getNameCurrentClient()
 {
     return m_nameClientWithCurrentDialog;
+}
+
+void ServerSocket::readHistoryOfMsgFromDB(QString user)
+{
+    QStringList listMsg;
+    m_db.readMessageFromDB(listMsg, user);
+
+    int index_of_client = NULL;
+    for(int j = 0; j < ListOfClients.length(); ++j)
+    {
+        if (ListOfClients[j]->getName() == user)
+        {
+            index_of_client = j;
+            break;
+        }
+    }
+
+    for (int i = 0; i < listMsg.length(); ++i)
+    {
+        QStringList structMsg = listMsg[i].split(';');
+
+        if (structMsg[1] == user)
+        {
+            ListOfClients[index_of_client]->addToHistoryOfMessages(structMsg[2] + ": " + structMsg[0]);
+        }
+
+        if (structMsg[2] == user)
+        {
+            ListOfClients[index_of_client]->addToHistoryOfMessages(structMsg[2] + " to " + structMsg[1] + ": " + structMsg[0]);
+        }
+    }
 }
