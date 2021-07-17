@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTcpSocket>
 #include "..\\Common\\message.h"
+#include "..\\Common\\connectdb.h"
 
 class ClientSocket : public QObject
 {
@@ -42,6 +43,8 @@ private:
     quint16     m_blockSize;                    //текущий размер блока данных
     bool registrationRequest;                   //флаг обозначающий запрос на регистрацию, нужен для того чтобы после подключения отправить правильный код
     bool authorizatesNow;                       //флаг необходимый для проверки того авторизовались мы или еще нет
+    ConnectDB   m_db;
+    QVector<Message> historyOfMessage;
 
 };
 

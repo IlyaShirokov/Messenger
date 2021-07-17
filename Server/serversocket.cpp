@@ -3,7 +3,7 @@
 ServerSocket::ServerSocket(QObject *parent) : QObject(parent)
 {
     m_serverStatus = NotListening;
-    if(!m_db.connectDB())
+    if(!m_db.connectDB_server())
     {
         emit updateStatus_log("<nobr><font color=\"red\">Cannot connect to database </nobr>");
     }
@@ -16,11 +16,10 @@ ServerSocket::~ServerSocket()
 
 void ServerSocket::initServer(QString ipAddres, qint16 port)
 {
-    m_server = new QTcpServer(this);
-    m_port = port;
-
     if(m_serverStatus == NotListening)
     {
+        m_server = new QTcpServer(this);
+        m_port = port;
         if (m_server->listen(QHostAddress(ipAddres), m_port))
         {
             m_serverStatus = ServerSocket::Listening;
@@ -90,7 +89,7 @@ void ServerSocket::slotServerRead()
     {
     case Message::comAutchRequest:
     {
-        if((m_db.authorizeUser(msg_in.getSenderName(), msg_in.getTextData())) &&  (msg_in.getSenderName() != "noname"))
+        if((m_db.authorizeUser_server(msg_in.getSenderName(), msg_in.getTextData())) &&  (msg_in.getSenderName() != "noname"))
         {
             ListOfClients[index_of_client]->addToHistoryOfMessages("<nobr><font color=\"green\">Сonnected to server<br></nobr>");
             emit updateStatus_log("<nobr><font color=\"green\">New client connected</nobr>");
@@ -146,7 +145,7 @@ void ServerSocket::slotServerRead()
     }
     case Message::comRegistrationRequest:
     {
-        if((m_db.registerUser(msg_in.getSenderName(), msg_in.getTextData())) &&  (msg_in.getSenderName() != "noname"))
+        if((m_db.registerUser_server(msg_in.getSenderName(), msg_in.getTextData())) &&  (msg_in.getSenderName() != "noname"))
         {
             updateStatus_log("<nobr><font color=\"green\">New client just registered: </nobr>" + msg_in.getSenderName());
             Message msg_out("registration ok", Message::comSuccessfulRegistration, "Server", ListOfClients[index_of_client]->getName());
@@ -225,6 +224,7 @@ void ServerSocket::onStopingClicked()
 
         sendClientToMainWindow(ListNameOfClients);
         m_server->close();
+        delete m_server;
         m_serverStatus = NotListening;
         updateStatus_log("<nobr><font color=\"red\">Server stopped</nobr>");
     }
@@ -293,7 +293,7 @@ QString ServerSocket::getNameCurrentClient()
 void ServerSocket::readHistoryOfMsgFromDB(QString user)
 {
     QStringList listMsg;
-    m_db.readMessageFromDB(listMsg, user);
+    m_db.readMessageFromDB_server(listMsg, user);
 
     int index_of_client = NULL;
     for(int j = 0; j < ListOfClients.length(); ++j)

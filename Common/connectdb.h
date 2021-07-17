@@ -3,17 +3,21 @@
 
 #include <QObject>
 #include <QtSql>
+#include <QDir>
 
 class ConnectDB : public QObject
 {
     Q_OBJECT
 public:
     explicit ConnectDB(QObject *parent = nullptr);
-    bool connectDB();   //подключение к БД
-    bool authorizeUser(QString name, QString password);
-    bool registerUser(QString name, QString password);
+    bool connectDB_server();
+    bool authorizeUser_server(QString name, QString password);
+    bool registerUser_server(QString name, QString password);
     void writeMessageToDB(QString message, QString sender, QString destination);
-    void readMessageFromDB(QStringList &output, QString sender);
+    void readMessageFromDB_server(QStringList &output, QString sender);
+
+    bool connectDB_client(QString nameClient);
+    void readMessageFromDB_client(QStringList &output);
 
 signals:
 

@@ -76,6 +76,7 @@ void ClientSocket::socketRead()
     {
         QString senderAndData = msg_in.getSenderName() + ';' + msg_in.getTextData();
         emit updateMessages(senderAndData);
+        historyOfMessage.append(msg_in);
         break;
     }
     case Message::comServerClosed:
@@ -133,8 +134,9 @@ QString ClientSocket::getNameClientWithCurrentDialog()
 }
 
 void ClientSocket::getMessageFromWindow(QString data)
-{
+{   
     Message msg(data, Message::comTextMessage, m_NameOfUser, m_nameClientWithCurrentDialog);
+    historyOfMessage.append(msg);
     sendMessage(msg);
 }
 
