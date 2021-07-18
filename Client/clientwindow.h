@@ -26,6 +26,7 @@ private slots:
     void serverDisconnected(bool flagAuthorizated);             //действия при потере соединения с сервером
     void display(QString name, QString ipAddres, qint16 port);  //отображение главного окна в случае успешной авторизации
     void on_button_logout_clicked();                            //нажатие на кнопку смены пользователя
+    void addToHistoryMsg(Message msg);
 
 private:
     Ui::ClientWindow *ui;
@@ -33,5 +34,6 @@ private:
     ClientSocket client;
     QStringList currentListOfClients;       //список активных клиентов
     bool loadListOfClient;                  //становится единицей при первой загрузке списка клиентов при подключении
+    QVector<Message> historyOfMessage;
 };
 #endif // CLIENTWINDOW_H

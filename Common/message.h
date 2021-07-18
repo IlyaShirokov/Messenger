@@ -10,7 +10,7 @@ class Message : public QObject
 public:
     explicit Message(QObject *parent = nullptr);
     Message(QString m_textData, qint8 typeMessage, QString senderName, QString destinationName);
-    explicit Message(const Message &message);
+    Message(const Message &message);
     Message& operator= (const Message &message);
 
     QString getTextData();

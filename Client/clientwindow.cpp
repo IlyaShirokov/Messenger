@@ -18,6 +18,7 @@ ClientWindow::ClientWindow(QWidget *parent)
     connect(ui->listWidget_activeClients, &QListWidget::doubleClicked, this, &ClientWindow::changeUserDialogWith);  //выбор клиента для диалога с ним
     connect(&client, &ClientSocket::serverDisconnected, this, &ClientWindow::serverDisconnected);                   //действия при потере соеднинения с сервером
     connect(&client, &ClientSocket::displayClientWindow, this, &ClientWindow::display);                             //сигнал от сокета о успешкном подключении и отображении главного окна
+    connect(&client, &ClientSocket::addToHistoryMsgMainWindow, this, &ClientWindow::addToHistoryMsg);
 
     auth.show();
 }
@@ -40,7 +41,15 @@ void ClientWindow::on_button_sendMessage_clicked()
 void ClientWindow::updateTextBrowser_messages(QString msg)
 {
     QStringList structMsg = msg.split(';');
-    ui->textBrowser_dialog->append(structMsg[0] + ": " + structMsg[1]);
+    if (structMsg[0] == "Server")
+    {
+        ui->textBrowser_dialog->append(structMsg[0] + ": " + structMsg[1]);
+    }
+
+    if (client.getNameClientDialogWith() == structMsg[0])
+    {
+        ui->textBrowser_dialog->append(structMsg[0] + ": " + structMsg[1]);
+    }
 }
 
 void ClientWindow::changeUsersInList(QStringList arg_data)
@@ -48,6 +57,10 @@ void ClientWindow::changeUsersInList(QStringList arg_data)
     for (int i = 0; i < arg_data.length(); i++)
         if (arg_data[i] == "")
             arg_data.removeAt(i);   //для удаление пустого элемента в конце списка
+
+    for (int i = 0; i < arg_data.length(); i++)
+        if (arg_data[i] == client.getName())
+            arg_data.removeAt(i);
 
     if (loadListOfClient == 0)
     {
@@ -103,9 +116,23 @@ void ClientWindow::changeUsersInList(QStringList arg_data)
 
 void ClientWindow::changeUserDialogWith()
 {
+    ui->textBrowser_dialog->clear();
     if (ui->listWidget_activeClients->currentItem()->text() == client.getName())
         return;
     ui->groupBox_dialog->setTitle("Dialog with: " + ui->listWidget_activeClients->currentItem()->text());
+
+    for (auto n : historyOfMessage)
+    {
+        if (n.getSenderName() == ui->listWidget_activeClients->currentItem()->text())
+        {
+            ui->textBrowser_dialog->append(n.getSenderName() + ": " + n.getTextData());
+        }
+
+        if (n.getDestinationName() == ui->listWidget_activeClients->currentItem()->text())
+        {
+            ui->textBrowser_dialog->append(n.getSenderName() + " to " + n.getDestinationName() + ": " + n.getTextData());
+        }
+    }
 
     client.selectUserForDialog(ui->listWidget_activeClients->currentItem()->text());
 }
@@ -139,4 +166,9 @@ void ClientWindow::on_button_logout_clicked()
     this->hide();
     client.socketDisconnected();
     ui->textBrowser_dialog->clear();
+}
+
+void ClientWindow::addToHistoryMsg(Message msg)
+{
+    historyOfMessage.append(msg);
 }

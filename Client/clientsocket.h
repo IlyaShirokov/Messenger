@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QTcpSocket>
 #include "..\\Common\\message.h"
-#include "..\\Common\\connectdb.h"
 
 class ClientSocket : public QObject
 {
@@ -32,6 +31,7 @@ signals:
     void declineConnect();                                                  //сигнал окну авторизации, что подключение не удалось
     void registerUserAnswerDB(bool ans);
     void loginUserAnswerDB(bool ans);
+    void addToHistoryMsgMainWindow(Message msg);
 
 private:
     QTcpSocket* m_socket;                       //объект сокета
@@ -43,8 +43,6 @@ private:
     quint16     m_blockSize;                    //текущий размер блока данных
     bool registrationRequest;                   //флаг обозначающий запрос на регистрацию, нужен для того чтобы после подключения отправить правильный код
     bool authorizatesNow;                       //флаг необходимый для проверки того авторизовались мы или еще нет
-    ConnectDB   m_db;
-    QVector<Message> historyOfMessage;
 
 };
 
